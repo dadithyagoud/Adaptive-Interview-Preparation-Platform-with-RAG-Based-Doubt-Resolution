@@ -1,0 +1,60 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node / Frontend Build
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+*.env
+*.pem
+*.key
+*.cert
+*.crt
+
+# Java / Maven Build Artifacts
+target/
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Scratch & Temporary Generation Scripts
+scratch/
+__pycache__/
+*.py[cod]
+
+# Editor & IDE Directories
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+.fleet/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# Agent / AI local workspace caches
+.gemini/
+.agents/
+

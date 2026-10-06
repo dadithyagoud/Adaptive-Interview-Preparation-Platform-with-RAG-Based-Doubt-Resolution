@@ -1,0 +1,226 @@
+[
+  {
+    "id": "os-mod-1",
+    "title": "Operating System Basics & Architecture",
+    "overview": "Fundamental roles of an OS: resource manager, hardware abstraction layer, dual-mode execution (user vs kernel mode), monolithic vs microkernel architectures.",
+    "diagram": "[User Applications] -> [System Call API (POSIX/Win32)] -> [Dual-Mode Switch (Mode Bit: 1->0)] -> [Kernel Space] -> [Hardware]",
+    "keyPoints": [
+      "Dual-mode execution uses a hardware mode bit (0 = kernel mode, 1 = user mode) to protect hardware from unauthorized user tampering.",
+      "Monolithic kernels (Linux) run all OS services in kernel address space for maximum execution speed.",
+      "Microkernels (Mach, QNX) keep only minimal primitives (IPC, basic scheduling, virtual memory) in kernel space, running file systems and device drivers as user-space servers for fault isolation."
+    ]
+  },
+  {
+    "id": "os-mod-2",
+    "title": "System Calls",
+    "overview": "The programmatic interface between user processes and hardware services. Software traps, interrupt vector table (IVT), context switching from ring 3 to ring 0.",
+    "diagram": "[User Call: read()] -> [Set Syscall Register %eax] -> [Software Trap: int 0x80 / syscall] -> [Switch Ring 3 to Ring 0] -> [IVT Lookup] -> [Kernel sys_read()] -> [iret to Ring 3]",
+    "keyPoints": [
+      "A system call generates a software interrupt (trap) causing the CPU mode bit to flip from user (1) to kernel (0).",
+      "Parameters are passed via hardware CPU registers (%rdi, %rsi, %rdx on x86_64) or on the kernel stack for large structures.",
+      "Common POSIX calls: fork() (process clone), execve() (program loader), waitpid() (reap child), pipe() (unidirectional IPC), mmap() (memory-mapped files)."
+    ]
+  },
+  {
+    "id": "os-mod-3",
+    "title": "Processes & Process States",
+    "overview": "Process definition (active program with memory address space), 5-state process lifecycle (New, Ready, Running, Waiting/Blocked, Terminated), and 7-state models with suspension.",
+    "diagram": "[New] -> (Admitted) -> [Ready] <--(Interrupt)-- [Running] -> (Exit) -> [Terminated]\n                           ^                        |\n                           |--- (I/O Done) <-- [Waiting (I/O)]",
+    "keyPoints": [
+      "A process transitions from Running to Waiting when it voluntarily initiates blocking operations like disk I/O, network read, or sem_wait().",
+      "An interrupt (timer quantum expiry or hardware device) moves a process from Running directly back to Ready.",
+      "A Zombie process has terminated execution via exit() but its entry remains in the process table because the parent hasn't reaped it via wait().",
+      "An Orphan process has its parent terminated prematurely; it is automatically adopted by init / systemd (PID 1)."
+    ]
+  },
+  {
+    "id": "os-mod-4",
+    "title": "Process Control Block (PCB) & Context Switching",
+    "overview": "Data structure maintaining process state, hardware registers, Program Counter (PC), stack pointer, open file descriptors, and scheduling metadata.",
+    "diagram": "[Process Control Block (PCB)]:\n├── Process ID (PID) & Parent PID (PPID)\n├── Process State (Ready, Running, Blocked)\n├── Program Counter (PC) & CPU Registers (RAX, RSP, etc.)\n├── Memory Limits (Base/Limit registers or Page Table Pointer CR3)\n└── List of Open File Descriptors (stdin=0, stdout=1, stderr=2)",
+    "keyPoints": [
+      "Context Switch overhead is pure system waste: CPU saves current state into PCB_old, updates scheduling queue, loads registers and CR3 from PCB_new, and flushes TLB entries.",
+      "Hardware context switch performance depends heavily on the cache footprint and whether Address Space Identifiers (ASID) prevent complete TLB flushes.",
+      "Context switching between two threads of the SAME process is substantially faster than between two processes because memory address space (page tables/CR3) remains unchanged."
+    ]
+  },
+  {
+    "id": "os-mod-5",
+    "title": "Threads & Multithreading",
+    "overview": "Unit of CPU execution within a process. Shared vs private resources, User-Level Threads (ULT) vs Kernel-Level Threads (KLT), 1:1, N:1, and M:N threading models.",
+    "diagram": "[Process Address Space]\n├── Shared: Code Section, Data Section (Globals), Heap, Open Files\n└── Private Per-Thread: Thread ID (TID), Program Counter (PC), Registers, Thread Stack",
+    "keyPoints": [
+      "Threads belonging to the same process share the heap, global variables, and open file descriptors, but each thread MUST have its own independent call stack and registers.",
+      "In User-Level Threads (Many-to-One), if one thread executes a blocking system call, the entire process and all sibling threads are blocked because the kernel is unaware of the threads.",
+      "Modern Linux uses the 1:1 threading model (NPTL - Native POSIX Thread Library), where each user thread is backed by a kernel `task_struct` created via clone(CLONE_VM | CLONE_FS | CLONE_FILES)."
+    ]
+  },
+  {
+    "id": "os-mod-6",
+    "title": "Inter-Process Communication (IPC)",
+    "overview": "Mechanisms allowing distinct processes to exchange data: Shared Memory, Message Queues, Anonymous Pipes, Named Pipes (FIFOs), and UNIX Domain Sockets.",
+    "diagram": "[Shared Memory]: Fast, zero kernel copy after setup, requires mutex synchronization.\n[Message Passing]: Kernel-mediated buffers (copy_from_user -> copy_to_user), inherently synchronized.",
+    "keyPoints": [
+      "Shared Memory is the fastest IPC mechanism because data is read/written directly in RAM without kernel intervention once mapped, but requires explicit developer synchronization.",
+      "Anonymous pipes (POSIX pipe()) are unidirectional byte streams accessible only between related processes (parent-child); named pipes (FIFOs) can be accessed by arbitrary unrelated processes by path.",
+      "Network / UNIX Domain sockets provide full-duplex, stream or datagram communication across process boundaries and networked hosts."
+    ]
+  },
+  {
+    "id": "os-mod-7",
+    "title": "CPU Scheduling",
+    "overview": "Dispatcher vs Scheduler, preemptive vs non-preemptive scheduling, evaluation metrics: CPU Utilization, Throughput, Turnaround Time, Waiting Time, Response Time.",
+    "diagram": "[Metric Formulations]:\n• Turnaround Time (TAT) = Completion Time - Arrival Time\n• Waiting Time (WT) = Turnaround Time - Burst Time\n• Response Time (RT) = Time of First CPU Allocation - Arrival Time",
+    "keyPoints": [
+      "Non-preemptive scheduling allows a process to retain the CPU until it voluntarily terminates or yields for I/O; preemptive scheduling can interrupt a running process on timer interrupts.",
+      "Throughput is defined as the number of processes completed per unit time.",
+      "Convoy Effect occurs in non-preemptive FCFS when short CPU-bound and I/O-bound jobs wait behind a single massive CPU-bound job, dropping device and CPU utilization."
+    ]
+  },
+  {
+    "id": "os-mod-8",
+    "title": "CPU Scheduling Algorithms",
+    "overview": "Algorithmic implementations: FCFS, Shortest Job First (SJF), Shortest Remaining Time First (SRTF), Round Robin (RR), Priority Scheduling, and Multilevel Feedback Queue (MLFQ).",
+    "diagram": "[SJF/SRTF]: Provably optimal for minimum average waiting time.\n[Round Robin]: Fair, time quantum q parameter determines behavior (q->inf => FCFS, q->0 => high overhead).\n[MLFQ]: Adaptive, prioritizes interactive I/O jobs and demotes CPU-heavy jobs.",
+    "keyPoints": [
+      "SRTF (Preemptive SJF) is provably optimal for minimizing average waiting time across all scheduling algorithms.",
+      "In Round Robin, if the time quantum is too small, context switch overhead severely degrades throughput; if too large, it degenerates into FCFS.",
+      "Multilevel Feedback Queue (MLFQ) dynamically prevents starvation through aging (promoting long-waiting processes to higher priority queues) while keeping interactive jobs responsive."
+    ]
+  },
+  {
+    "id": "os-mod-9",
+    "title": "Process Synchronization",
+    "overview": "Concurrency pitfalls, shared mutable state, race conditions, atomic operations, hardware test-and-set and compare-and-swap (CAS) primitives.",
+    "diagram": "[Thread 1: counter++] <--- Concurrent Race Condition ---> [Thread 2: counter--]\nAssembly:\n1. MOV R1, [counter]          1. MOV R2, [counter]\n2. ADD R1, 1                  2. SUB R2, 1\n3. MOV [counter], R1          3. MOV [counter], R2\nResult depends entirely on non-deterministic interleaving without synchronization!",
+    "keyPoints": [
+      "A Race Condition occurs when multiple concurrent execution paths access shared mutable memory and the final outcome depends on non-deterministic execution ordering.",
+      "An operation is Atomic if it executes as a single, indivisible step with respect to all other threads, verified by hardware primitives like CMPXCHG (Compare-and-Swap).",
+      "Lock-free concurrency models use atomic CAS loops to mutate pointer references without acquiring operating system thread locks."
+    ]
+  },
+  {
+    "id": "os-mod-10",
+    "title": "Critical Section Problem",
+    "overview": "The core synchronization challenge: Mutual Exclusion, Progress, and Bounded Waiting criteria. Software solutions (Peterson's 2-process algorithm) and hardware instructions.",
+    "diagram": "[Entry Section] -> Acquire Lock / Verify Flags\n  ├── [Critical Section] -> Modify Shared State\n[Exit Section] -> Release Lock / Set Turn\n  └── [Remainder Section] -> Unrelated Local Code",
+    "keyPoints": [
+      "Every valid solution to the Critical Section problem MUST satisfy three mandatory requirements: Mutual Exclusion (at most 1 process inside), Progress (selection cannot be postponed indefinitely), and Bounded Waiting (no starvation).",
+      "Peterson's Algorithm uses two shared variables: `boolean flag[2]` (intent to enter) and `int turn` (politeness tie-breaker) to guarantee mutual exclusion and progress for 2 processes.",
+      "Peterson's algorithm fails on modern multi-core architectures without explicit memory fences/barriers because CPUs and compilers perform out-of-order execution and aggressive memory reordering."
+    ]
+  },
+  {
+    "id": "os-mod-11",
+    "title": "Semaphores & Mutex",
+    "overview": "Synchronization primitives: Mutex (mutual exclusion with ownership), Counting Semaphores, Binary Semaphores, Spinlocks, Priority Inversion & Priority Inheritance.",
+    "diagram": "[Mutex]: Binary lock with ownership. Only the thread that locked it can unlock it.\n[Counting Semaphore]: Integer S with atomic wait()/P() and signal()/V(). Used for resource pool counting.\n[Spinlock]: Busy-waits in a CPU loop; optimal for ultra-short critical sections on multi-core.",
+    "keyPoints": [
+      "A Mutex has an ownership semantic: only the specific thread that called mutex_lock() is legally permitted to call mutex_unlock().",
+      "A Semaphore is a signaling mechanism with an integer counter: wait() (or P()) decrements S; if S <= 0, the thread blocks. signal() (or V()) increments S and awakens a sleeper.",
+      "Priority Inversion occurs when a high-priority task is blocked waiting on a mutex held by a low-priority task, while a medium-priority task preempts the low-priority task.",
+      "Priority Inheritance resolves priority inversion by temporarily boosting the low-priority thread's priority to match the highest-priority blocked waiter until the mutex is released."
+    ]
+  },
+  {
+    "id": "os-mod-12",
+    "title": "Deadlocks",
+    "overview": "Definition of deadlock: a permanent blocking state where every process in a set is waiting on a resource held by another process in that set. Resource Allocation Graphs (RAG).",
+    "diagram": "[Resource Allocation Graph]:\nProcess Pi ----(Requests)----> Resource Rj\nResource Rj ----(Allocated)----> Process Pk\nIn single-instance resource systems: Cycle in RAG <=> Deadlock!",
+    "keyPoints": [
+      "Deadlock requires the simultaneous occurrence of all 4 Coffman conditions: Mutual Exclusion, Hold and Wait, No Preemption, and Circular Wait.",
+      "If every resource type has strictly ONE single instance, a directed cycle in the Resource Allocation Graph (RAG) is a necessary AND sufficient condition for deadlock.",
+      "If resource types have MULTIPLE instances, a cycle in the RAG is necessary but NOT sufficient to prove a deadlock exists."
+    ]
+  },
+  {
+    "id": "os-mod-13",
+    "title": "Deadlock Prevention, Avoidance & Detection",
+    "overview": "Deadlock handling strategies: Prevention (invalidating 1 Coffman condition), Avoidance (Banker's Algorithm & Safe State checking), Detection & Recovery (Wait-For Graph), and Ostrich algorithm.",
+    "diagram": "[Safe State Check]:\nMax Need[i] <= Available? -> Yes -> Simulate Completion -> Available += Allocation[i]\nRepeat until all processes finish. If impossible -> Unsafe State.",
+    "keyPoints": [
+      "Deadlock Prevention eliminates the possibility of deadlock by structurally violating at least one of the 4 Coffman conditions (e.g., ordering all resources globally with an integer ID to eliminate Circular Wait).",
+      "Deadlock Avoidance dynamically analyzes resource allocation state (Banker's Algorithm) to ensure the system NEVER enters an Unsafe State.",
+      "An Unsafe State is NOT necessarily a deadlock; however, all deadlocked states are unsafe states.",
+      "The Ostrich Algorithm sticks its head in the sand and ignores deadlocks; it is used by mainstream desktop OSes (Linux, Windows, macOS) because detection/prevention overhead exceeds recovery benefits."
+    ]
+  },
+  {
+    "id": "os-mod-14",
+    "title": "Memory Management",
+    "overview": "Memory hierarchy, logical vs physical addresses, Memory Management Unit (MMU), base/limit registers, contiguous memory allocation, Fixed & Variable Partitioning, External vs Internal Fragmentation.",
+    "diagram": "[CPU Logical Address] -> [Check < Limit] -> [Add Base Register] -> [Physical RAM Address]\n• Internal Fragmentation: Allocated block > Requested memory (unused space inside partition).\n• External Fragmentation: Total free memory sufficient, but fragmented into non-contiguous slices.",
+    "keyPoints": [
+      "Internal Fragmentation occurs when fixed-size memory blocks allocate more bytes than the process requested, leaving wasted slack inside the allocated frame.",
+      "External Fragmentation occurs in variable-partition systems when free memory is broken into many small, non-contiguous gaps, making it impossible to satisfy a contiguous allocation request.",
+      "Dynamic memory allocation placement strategies: First-Fit (fastest), Best-Fit (searches entire free list for smallest suitable hole, produces tiny unusable leftovers), Worst-Fit (leaves largest remaining hole)."
+    ]
+  },
+  {
+    "id": "os-mod-15",
+    "title": "Paging",
+    "overview": "Non-contiguous memory allocation: physical frames, logical pages, Page Table Entry (PTE), Translation Lookaside Buffer (TLB), Effective Memory Access Time (EMAT), multi-level paging.",
+    "diagram": "[Logical Address]: [Page Number p | Offset d]\n[TLB Lookup] -> Hit? -> Frame f retrieved in 1ns.\n             -> Miss? -> Walk Multi-Level Page Table in RAM (100ns) -> Update TLB -> Physical Address: [Frame f | Offset d]",
+    "keyPoints": [
+      "Paging completely eliminates external fragmentation by mapping fixed-size virtual pages (typically 4 KB) into arbitrary free physical memory frames.",
+      "Effective Memory Access Time (EMAT) = hit_rate * (tlb_access + ram_access) + (1 - hit_rate) * (tlb_access + 2 * ram_access).",
+      "In 64-bit systems, a linear page table would consume gigabytes per process; hierarchical multi-level paging (e.g., 4-level PML4 on x86-64) saves physical RAM by creating table levels only for allocated address ranges.",
+      "Translation Lookaside Buffer (TLB) is an on-die associative hardware cache that caches virtual-to-physical address mappings."
+    ]
+  },
+  {
+    "id": "os-mod-16",
+    "title": "Page Replacement Algorithms",
+    "overview": "Virtual memory page fault handling: FIFO, Optimal (MIN / Belady's Optimal), Least Recently Used (LRU), Clock (Second-Chance), and Belady's Anomaly.",
+    "diagram": "[Belady's Anomaly in FIFO]:\nPage Reference String: 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5\n• 3 Frames: 9 Page Faults\n• 4 Frames: 10 Page Faults (Increasing frames increases page faults!)",
+    "keyPoints": [
+      "Belady's Anomaly is the counter-intuitive phenomenon where increasing the number of physical page frames results in an INCREASE in the total number of page faults; it occurs in FIFO but NEVER in Stack algorithms.",
+      "Stack Algorithms (such as LRU and Optimal) never suffer from Belady's Anomaly because the set of pages in an n-frame allocation is always a strict subset of the pages in an (n+1)-frame allocation.",
+      "Optimal Page Replacement (replace the page that will not be used for the longest period in the future) is the theoretical benchmark with minimal faults, but cannot be implemented in general-purpose OSes because future memory accesses are unknown."
+    ]
+  },
+  {
+    "id": "os-mod-17",
+    "title": "Virtual Memory",
+    "overview": "Demand paging, page fault handling lifecycle, dirty bit (modified bit), working set model, Page Fault Frequency (PFF), and Thrashing.",
+    "diagram": "[CPU requests unmapped page] -> [MMU Trap: Page Fault (Ring 0)] -> [Verify Valid in VMA]\n  -> [Find Free Frame / Evict Victim] -> [Issue Disk Read from Swap Area]\n  -> [Disk Controller Interrupt] -> [Update PTE with Frame & Valid Bit=1]\n  -> [Restart Faulted Instruction]",
+    "keyPoints": [
+      "Demand Paging only loads a page from secondary storage into physical RAM when the executing CPU actually references an address inside that page.",
+      "Thrashing occurs when the sum of working sets of all active processes exceeds physical RAM capacity; the CPU spends almost 100% of its cycles servicing page faults rather than executing application code.",
+      "To recover from severe thrashing, the Long-Term / Medium-Term scheduler must suspend (swap out) several active processes entirely to free up physical frames for the remaining processes."
+    ]
+  },
+  {
+    "id": "os-mod-18",
+    "title": "File Systems",
+    "overview": "File concept, directory structures (tree, DAG), file allocation methods (contiguous, linked, indexed), UNIX Inode architecture, hard links vs symbolic (soft) links.",
+    "diagram": "[UNIX Inode Structure]:\n├── Metadata (File mode, UID, GID, size, timestamps, link count)\n├── 12 Direct Data Block Pointers (4 KB each -> 48 KB direct)\n├── 1 Single Indirect Pointer -> Points to block containing 1024 pointers (4 MB)\n├── 1 Double Indirect Pointer -> Points to 1024 single indirect blocks (4 GB)\n└── 1 Triple Indirect Pointer -> Points to 1024 double indirect blocks (4 TB)",
+    "keyPoints": [
+      "In UNIX, an Inode stores all file metadata (permissions, ownership, file size, block pointers) EXCEPT the file name; the file name is stored in the directory data block mapped to the inode number.",
+      "A Hard Link increments the reference count (`st_nlink`) of the existing inode; deleting one link retains the file data until all hard links are unlinked.",
+      "A Soft / Symbolic Link is a distinct, standalone file with its own inode whose data block stores the pathname string of the target file; if the original file is deleted, the soft link becomes a dangling link."
+    ]
+  },
+  {
+    "id": "os-mod-19",
+    "title": "Disk Scheduling",
+    "overview": "Magnetic HDD physical geometry (seek time, rotational latency, transfer time), and arm scheduling algorithms: FCFS, SSTF (Shortest Seek Time First), SCAN (Elevator), C-SCAN, LOOK, C-LOOK.",
+    "diagram": "[Disk Latency]: Total Access Time = Seek Time (Arm Movement) + Rotational Latency (Platter Spin) + Transfer Time.\n• SSTF: Greedily selects nearest cylinder; high variance, susceptible to arm starvation.\n• SCAN (Elevator): Scans toward one disk end servicing requests, reverses at boundary.\n• C-LOOK: Services requests in one direction only up to the last pending request, then jumps back to lowest pending request without hitting end track.",
+    "keyPoints": [
+      "Seek Time (the mechanical time required to position the read/write head over the target cylinder) constitutes the dominant mechanical bottleneck in spinning hard drives.",
+      "SSTF (Shortest Seek Time First) minimizes average seek time compared to FCFS, but causes severe starvation for requests located far from the current head cluster.",
+      "C-LOOK provides a more uniform waiting time than SCAN because it services requests in one direction only and snaps directly back without servicing on the return journey."
+    ]
+  },
+  {
+    "id": "os-mod-20",
+    "title": "I/O Systems & Interrupts",
+    "overview": "I/O hardware communication methods: Programmed I/O (polling), Interrupt-Driven I/O, Direct Memory Access (DMA), double buffering, and device drivers.",
+    "diagram": "[Programmed I/O]: CPU actively busy-waits on device status register (wastes 100% CPU cycles).\n[Interrupt-Driven]: Device asserts IRQ line -> CPU jumps to Interrupt Service Routine (ISR).\n[Direct Memory Access (DMA)]: DMA controller transfers byte blocks directly between device & RAM without CPU intervention -> Interrupts CPU only when complete!",
+    "keyPoints": [
+      "Direct Memory Access (DMA) unburdens the CPU by transferring large data blocks between high-speed peripheral devices (NICs, NVMe SSDs) and physical RAM without CPU involvement, interrupting only once per block transfer.",
+      "An Interrupt Service Routine (ISR) must be as brief and deterministic as possible; modern kernels split interrupt handling into a Top Half (immediate hardware ack) and Bottom Half / SoftIRQ (deferred processing).",
+      "Memory-Mapped I/O maps device control registers into the CPU's physical memory address space, allowing normal assembly load/store instructions to communicate directly with peripheral hardware."
+    ]
+  }
+]
