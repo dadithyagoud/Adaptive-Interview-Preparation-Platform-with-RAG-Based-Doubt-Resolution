@@ -18,13 +18,14 @@ export const Navbar = () => {
         {/* Brand Logo */}
         <Link 
           to={isLoggedIn ? "/dashboard" : "/"} 
-          className="flex items-center gap-2 group focus:outline-none"
+          className="flex items-center gap-2.5 group focus:outline-none min-w-0"
+          title="Adaptive Interview Preparation Platform with RAG-Based Doubt Resolution"
         >
-          <div className="w-7 h-7 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-zinc-50 dark:text-zinc-900 transition-opacity group-hover:opacity-90">
+          <div className="w-7 h-7 flex-shrink-0 rounded-lg bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-zinc-50 dark:text-zinc-900 transition-opacity group-hover:opacity-90">
             <Terminal className="h-3.5 w-3.5 stroke-[2.5]" />
           </div>
-          <span className="text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            PrepAI
+          <span className="text-xs sm:text-sm font-bold tracking-tight text-zinc-900 dark:text-zinc-100 truncate max-w-[240px] sm:max-w-[420px] lg:max-w-none">
+            Adaptive Interview Preparation Platform with RAG-Based Doubt Resolution
           </span>
         </Link>
         

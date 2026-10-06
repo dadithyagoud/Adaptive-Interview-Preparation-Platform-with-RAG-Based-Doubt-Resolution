@@ -7,11 +7,13 @@ const LandingPage = () => {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col justify-between">
       {/* Header */}
       <header className="max-w-6xl mx-auto w-full px-6 py-4 flex items-center justify-between border-b border-zinc-200/60 dark:border-zinc-850">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-zinc-50 dark:text-zinc-900">
+        <div className="flex items-center gap-2.5 min-w-0" title="Adaptive Interview Preparation Platform with RAG-Based Doubt Resolution">
+          <div className="w-6 h-6 flex-shrink-0 rounded-md bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-zinc-50 dark:text-zinc-900">
             <Terminal className="w-3.5 h-3.5 stroke-[2.5]" />
           </div>
-          <span className="font-semibold text-sm tracking-tight">PrepAI</span>
+          <span className="font-semibold text-xs sm:text-sm tracking-tight text-zinc-900 dark:text-zinc-100 truncate max-w-[240px] sm:max-w-none">
+            Adaptive Interview Preparation Platform with RAG-Based Doubt Resolution
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
