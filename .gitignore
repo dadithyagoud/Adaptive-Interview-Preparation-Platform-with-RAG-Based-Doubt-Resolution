@@ -35,6 +35,8 @@ target/
 scratch/
 __pycache__/
 *.py[cod]
+*.pptx
+*.ppt
 
 # Editor & IDE Directories
 .vscode/*
